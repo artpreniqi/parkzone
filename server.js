@@ -8,6 +8,7 @@ const userRoutes = require('./routes/users');
 const vehicleRoutes = require('./routes/vehicles');
 const zoneRoutes = require('./routes/zones');
 const reservationRoutes = require('./routes/reservations');
+const adminRoutes = require('./routes/admin');
 
 
 const app = express();
@@ -25,6 +26,7 @@ app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/vehicles', vehicleRoutes);
 app.use('/api/v1/zones', zoneRoutes);
 app.use('/api/v1/reservations', reservationRoutes);
+app.use('/api/v1/admin', adminRoutes);
 
 const PORT = process.env.PORT || 4000;
 
@@ -33,7 +35,7 @@ async function start() {
     await sequelize.authenticate();
     console.log('Database connected');
 
-    await sequelize.sync();
+    await sequelize.sync({ alter: true });
     console.log('Database synced');
 
     // default roles

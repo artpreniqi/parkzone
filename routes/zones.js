@@ -36,6 +36,7 @@ router.get('/', auth, async (req, res) => {
           total_spots: z.total_spots,
           reserved_count: reservedCount,
           free_spots: freeSpots,
+          status: z.status,
         };
       })
     );
@@ -56,5 +57,29 @@ router.post('/', auth, requireRole('ADMIN'), async (req, res) => {
     res.status(500).json({ message: 'Error creating zone' });
   }
 });
+
+// UPDATE zone (ADMIN) - edit + activate/deactivate
+router.put('/:id', auth, requireRole('ADMIN'), async (req, res) => {
+  try {
+    const zone = await ParkingZone.findByPk(req.params.id);
+    if (!zone) return res.status(404).json({ message: 'Zone not found' });
+
+    await zone.update({
+      name: req.body.name,
+      location: req.body.location,
+      total_spots: req.body.total_spots,
+      status: req.body.status,
+    });
+
+    res.json(zone);
+  } catch (err) {
+    console.error('update zone error:', err);
+    res.status(500).json({ message: 'Error updating zone' });
+  }
+  
+  console.log('UPDATE ZONE BODY:', req.body)
+
+});
+
 
 module.exports = router;

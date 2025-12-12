@@ -14,6 +14,11 @@ router.post('/', auth, async (req, res) => {
     const zone = await ParkingZone.findByPk(zoneId);
     if (!zone) return res.status(404).json({ message: 'Zone not found' });
 
+    if (zone.status !== 'ACTIVE') {
+    return res.status(403).json({ message: 'Kjo zonë është INACTIVE dhe nuk pranon rezervime' });
+    }
+
+
     const vehicle = await Vehicle.findOne({
       where: { id: vehicleId, UserId: req.user.id },
     });

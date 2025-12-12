@@ -1,3 +1,4 @@
+import AdminDashboard from './components/admin/AdminDashboard'
 import { useEffect, useState } from 'react'
 import './App.css'
 
@@ -31,6 +32,11 @@ function App() {
   const [currentUser, setCurrentUser] = useState(null) // { email, role }
   const [theme, setTheme] = useState('light') // 'light' | 'dark'
   const [reservationTab, setReservationTab] = useState('active') // 'active' | 'history'
+
+  // ADMIN DASHBOARD
+  const [adminStats, setAdminStats] = useState(null)
+  const [adminReservations, setAdminReservations] = useState([])
+  const [loadingAdmin, setLoadingAdmin] = useState(false)
 
 
   // forms
@@ -362,6 +368,32 @@ function App() {
       </>
     )
 
+  async function loadAdminDashboard() {
+    if (!authToken) return
+
+    try {
+      setLoadingAdmin(true)
+
+      const stats = await apiRequest('/admin/stats', {
+        method: 'GET',
+        token: authToken,
+      })
+
+      const reservations = await apiRequest('/admin/reservations?limit=10', {
+        method: 'GET',
+        token: authToken,
+      })
+
+      setAdminStats(stats)
+      setAdminReservations(reservations)
+    } catch (err) {
+      showMessage(err.message, 'danger')
+    } finally {
+      setLoadingAdmin(false)
+    }
+  }
+
+
   const isAdmin = currentUser?.role === 'ADMIN'
   const selectedZone = zones.find((z) => String(z.id) === String(reservationForm.zoneId))
   const selectedZoneFree = selectedZone ? Number(selectedZone.free_spots ?? selectedZone.freeSpots) : null
@@ -428,6 +460,23 @@ function App() {
                   <i className="bi bi-calendar-check me-1"></i> Reservations
                 </button>
               </li>
+              {isAdmin && (
+                <li className="nav-item">
+                  <button
+                    className={
+                      'nav-link btn btn-link p-0 ' +
+                      (activeSection === 'admin' ? 'active-section' : '')
+                    }
+                    onClick={() => {
+                      setActiveSection('admin')
+                      loadAdminDashboard()
+                    }}
+                  >
+                    <i className="bi bi-speedometer2 me-1"></i>
+                    Admin
+                  </button>
+                </li>
+              )}
             </ul>
 
             <div className="d-flex align-items-center gap-3">
@@ -531,7 +580,6 @@ function App() {
                             <label className="form-label">Roli</label>
                             <select className="form-select" value={regForm.roleName} onChange={(e) => setRegForm((f) => ({ ...f, roleName: e.target.value }))}>
                               <option value="RESIDENT">RESIDENT</option>
-                              <option value="ADMIN">ADMIN</option>
                               <option value="VISITOR">VISITOR</option>
                             </select>
                           </div>
@@ -899,6 +947,15 @@ function App() {
             </div>
           </div>
         )}
+
+        {activeSection === 'admin' && isAdmin && (
+          <AdminDashboard
+            apiRequest={apiRequest}
+            authToken={authToken}
+            showMessage={showMessage}
+          />
+        )}
+
       </div>
     </div>
   )
