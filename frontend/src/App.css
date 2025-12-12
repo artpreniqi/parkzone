@@ -1,0 +1,283 @@
+/* ============================
+   GENERAL LAYOUT & TYPOGRAPHY
+   ============================ */
+
+body {
+  background-color: #f5f6f8 !important;
+  font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+  color: #2d2d2d !important;
+  margin: 0;
+  padding: 0;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+h1, h2, h3, h4 {
+  color: #1f2937 !important; /* dark blue-gray */
+  font-weight: 600 !important;
+}
+
+p, span, label {
+  color: #333 !important;
+}
+
+.text-secondary {
+  color: #6b7280 !important; /* nice gray tone */
+}
+
+::placeholder {
+  color: #9ca3af !important; /* light gray for placeholders */
+}
+
+/* ============================
+   NAVBAR
+   ============================ */
+
+.navbar {
+  background: linear-gradient(90deg, #198754, #16a34a);
+}
+
+.navbar-brand {
+  font-weight: 700 !important;
+  color: white !important;
+}
+
+.nav-link {
+  color: #e5e7eb !important;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.nav-link:hover {
+  opacity: 1;
+}
+
+.active-section {
+  text-decoration: underline;
+}
+
+.badge-role {
+  font-size: 0.85rem;
+  padding: 6px 10px;
+}
+
+/* ============================
+   HERO / GLASS SECTION
+   ============================ */
+
+.glass {
+  padding: 24px 28px;
+  border-radius: 14px;
+  background: white;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  border: 1px solid #e5e7eb;
+}
+
+.glass h2 {
+  font-size: 26px;
+}
+
+.glass p {
+  font-size: 15px;
+}
+
+/* ============================
+   CARDS
+   ============================ */
+
+.card {
+  border-radius: 12px !important;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.08) !important;
+  border: none !important;
+  color: #2d2d2d !important;
+  background-color: #ffffff !important;
+}
+
+.card-title {
+  color: #111827 !important;
+  font-weight: 600;
+  font-size: 1.2rem;
+}
+
+.card-header {
+  background-color: #f1f5f9 !important;
+  border-bottom: 1px solid #e5e7eb !important;
+}
+
+/* ============================
+   FORM INPUTS
+   ============================ */
+
+.form-label {
+  color: #444 !important;
+  font-weight: 500;
+}
+
+.form-control, .form-select {
+  border-radius: 8px !important;
+  padding: 10px 12px !important;
+  border: 1px solid #d1d5db !important;
+  background-color: #ffffff !important;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: #16a34a !important;
+  box-shadow: 0 0 0 0.15rem rgba(22, 163, 74, 0.25) !important;
+}
+
+/* ============================
+   BUTTONS
+   ============================ */
+
+.btn-success,
+.btn-primary,
+.btn-danger {
+  border-radius: 8px !important;
+  padding: 10px 15px !important;
+  font-weight: 600 !important;
+}
+
+.btn-outline-light.btn-sm {
+  border-radius: 999px !important;
+}
+
+/* ============================
+   API STATUS BADGE
+   ============================ */
+
+.api-status {
+  padding: 6px 12px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: 50px;
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ============================
+   SECTIONS (Zones / Vehicles / Reservations)
+   ============================ */
+
+.section-title {
+  color: #1f2937 !important;
+  font-weight: 700 !important;
+  margin-bottom: 10px;
+  font-size: 20px;
+}
+
+.table {
+  background: white !important;
+  border-radius: 12px !important;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.06) !important;
+}
+
+.table thead {
+  background-color: #e5e7eb !important;
+}
+
+.table td, .table th {
+  padding: 12px !important;
+  vertical-align: middle !important;
+}
+
+/* ============================
+   FOOTER (Nëse të duhet më vonë)
+   ============================ */
+
+footer {
+  margin-top: 30px;
+  padding: 20px;
+  text-align: center;
+  color: #6b7280;
+}
+
+/* ==========================================
+   DARK MODE OVERRIDES (profi nivel)
+   ========================================== */
+
+body.dark-theme {
+  background-color: #020617 !important;   /* very dark blue/black */
+  color: #e5e7eb !important;
+}
+
+body.dark-theme h1,
+body.dark-theme h2,
+body.dark-theme h3,
+body.dark-theme h4,
+body.dark-theme p,
+body.dark-theme span,
+body.dark-theme label {
+  color: #e5e7eb !important;
+}
+
+body.dark-theme .navbar {
+  background: linear-gradient(90deg, #064e3b, #15803d) !important;
+}
+
+body.dark-theme .navbar-brand,
+body.dark-theme .nav-link {
+  color: #e5e7eb !important;
+}
+
+body.dark-theme .glass {
+  background: rgba(15, 23, 42, 0.9);
+  border-color: #1f2937;
+  box-shadow: 0 4px 18px rgba(15,23,42,0.7);
+}
+
+body.dark-theme .card {
+  background-color: #0f172a !important;
+  color: #e5e7eb !important;
+  box-shadow: 0 4px 20px rgba(15,23,42,0.8) !important;
+}
+
+body.dark-theme .card-header {
+  background-color: #020617 !important;
+  border-bottom: 1px solid #1f2937 !important;
+}
+
+body.dark-theme .table {
+  background-color: #020617 !important;
+  color: #e5e7eb !important;
+  box-shadow: 0 2px 10px rgba(15,23,42,0.8) !important;
+}
+
+body.dark-theme .table thead {
+  background-color: #111827 !important;
+}
+
+body.dark-theme .table tbody tr:hover {
+  background-color: #111827 !important;
+}
+
+body.dark-theme .form-control,
+body.dark-theme .form-select {
+  background-color: #020617 !important;
+  color: #e5e7eb !important;
+  border-color: #374151 !important;
+}
+
+body.dark-theme .form-control:focus,
+body.dark-theme .form-select:focus {
+  border-color: #16a34a !important;
+  box-shadow: 0 0 0 0.15rem rgba(34, 197, 94, 0.35) !important;
+}
+
+body.dark-theme .text-secondary {
+  color: #9ca3af !important;
+}
+
+body.dark-theme .api-status {
+  background-color: #020617;
+  border-color: #1f2937;
+  color: #e5e7eb;
+}
+
+body.dark-theme .alert {
+  background-color: #111827;
+  border-color: #1f2937;
+  color: #e5e7eb;
+}

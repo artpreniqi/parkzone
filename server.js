@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const cors = require('cors');
 const { sequelize, Role } = require('./models');
 
 const authRoutes = require('./routes/auth');
@@ -8,7 +9,9 @@ const vehicleRoutes = require('./routes/vehicles');
 const zoneRoutes = require('./routes/zones');
 const reservationRoutes = require('./routes/reservations');
 
+
 const app = express();
+app.use(cors());
 app.use(express.json());
 
 // test route
