@@ -29,23 +29,9 @@ function App() {
 
   const [authToken, setAuthToken] = useState(null)
   const [currentUser, setCurrentUser] = useState(null) // { email, role }
-  const [theme, setTheme] = useState('light') // 'light' ose 'dark'
+  const [theme, setTheme] = useState('light') // 'light' | 'dark'
+  const [reservationTab, setReservationTab] = useState('active') // 'active' | 'history'
 
-  // theme switch (light/dark)
-  useEffect(() => {
-    document.body.classList.remove('light-theme', 'dark-theme')
-    document.body.classList.add(theme === 'light' ? 'light-theme' : 'dark-theme')
-  }, [theme])
-
-  // auto-login nga localStorage nese ekziston token
-  useEffect(() => {
-    const savedToken = localStorage.getItem('parkzoneToken')
-    if (savedToken) {
-      setAuthToken(savedToken)
-      fetchMe(savedToken)
-      setActiveSection('zones')
-    }
-  }, [])
 
   // forms
   const [regForm, setRegForm] = useState({
@@ -84,7 +70,7 @@ function App() {
   })
 
   // data lists
-  const [zones, setZones] = useState([])
+  const [zones, setZones] = useState([]) // tani zones do ketë free_spots nga backend
   const [vehicles, setVehicles] = useState([])
   const [reservations, setReservations] = useState([])
 
@@ -95,6 +81,32 @@ function App() {
     setMessage({ text, type, visible: true })
     setTimeout(() => setMessage((m) => ({ ...m, visible: false })), 4000)
   }
+
+  // theme switch (light/dark)
+  useEffect(() => {
+    document.body.classList.remove('light-theme', 'dark-theme')
+    document.body.classList.add(theme === 'light' ? 'light-theme' : 'dark-theme')
+  }, [theme])
+
+  // auto-login nga localStorage
+  useEffect(() => {
+    const savedToken = localStorage.getItem('parkzoneToken')
+    if (savedToken) {
+      setAuthToken(savedToken)
+      fetchMe(savedToken)
+      setActiveSection('zones')
+      loadZones(savedToken)
+    }
+  }, [])
+
+  // auto-refresh reservations çdo 30s vetëm kur je te Reservations
+  useEffect(() => {
+    if (!authToken || activeSection !== 'reservations') return
+
+    loadMyReservations()
+    const id = setInterval(() => loadMyReservations(), 30000)
+    return () => clearInterval(id)
+  }, [authToken, activeSection])
 
   async function checkApi() {
     try {
@@ -137,6 +149,7 @@ function App() {
       })
 
       showMessage('Regjistrimi u kry me sukses', 'success')
+      setShowRegister(false)
     } catch (err) {
       showMessage(err.message, 'danger')
     }
@@ -155,7 +168,6 @@ function App() {
         body: { email, password },
       })
 
-      // ruaj tokenin ne state + localStorage
       setAuthToken(data.token)
       localStorage.setItem('parkzoneToken', data.token)
 
@@ -179,8 +191,9 @@ function App() {
   // -------- ZONES --------
   async function loadZones(token = authToken) {
     try {
+      // backend kthen { start, end, zones: [...] }
       const data = await apiRequest('/zones', { method: 'GET', token })
-      setZones(data)
+      setZones(Array.isArray(data) ? data : data.zones || [])
     } catch (err) {
       showMessage(err.message, 'danger')
     }
@@ -246,30 +259,36 @@ function App() {
     }
   }
 
+  async function deleteVehicle(vehicleId) {
+  if (!authToken) return;
+
+  if (!window.confirm('A je i sigurt që dëshiron ta fshish këtë veturë?')) return;
+
+  try {
+    await apiRequest(`/vehicles/${vehicleId}`, {
+      method: 'DELETE',
+      token: authToken,
+    });
+
+    showMessage('Veturë u fshi me sukses', 'success');
+    loadVehicles();
+  } catch (err) {
+    showMessage(err.message, 'danger');
+  }
+}
+
   // -------- RESERVATIONS --------
   async function createReservation() {
     if (!authToken) {
       showMessage('Duhet të jesh i kyçur', 'warning')
       return
     }
-    try {
-      const {
-        zoneId,
-        vehicleId,
-        start_date,
-        start_time_simple,
-        end_date,
-        end_time_simple,
-      } = reservationForm
 
-      if (
-        !zoneId ||
-        !vehicleId ||
-        !start_date ||
-        !start_time_simple ||
-        !end_date ||
-        !end_time_simple
-      ) {
+    try {
+      const { zoneId, vehicleId, start_date, start_time_simple, end_date, end_time_simple } =
+        reservationForm
+
+      if (!zoneId || !vehicleId || !start_date || !start_time_simple || !end_date || !end_time_simple) {
         showMessage('Plotëso të gjitha fushat e rezervimit', 'warning')
         return
       }
@@ -287,8 +306,13 @@ function App() {
         },
         token: authToken,
       })
+
       showMessage('Rezervimi u krijua me sukses', 'success')
-      loadMyReservations()
+
+      await loadZones()
+
+      // rifresko rezervimet
+      await loadMyReservations()
     } catch (err) {
       showMessage(err.message, 'danger')
     }
@@ -311,19 +335,17 @@ function App() {
   }
 
   // helpers
-  const userLabel = currentUser
-    ? (
-        <>
-          <i className="bi bi-circle-fill text-success me-1"></i>
-          {currentUser.email}
-          <span className="badge-role ms-2">{currentUser.role}</span>
-        </>
-      )
-    : (
-        <>
-          <i className="bi bi-circle text-danger me-1"></i> Guest
-        </>
-      )
+  const userLabel = currentUser ? (
+    <>
+      <i className="bi bi-circle-fill text-success me-1"></i>
+      {currentUser.email}
+      <span className="badge-role ms-2">{currentUser.role}</span>
+    </>
+  ) : (
+    <>
+      <i className="bi bi-circle text-danger me-1"></i> Guest
+    </>
+  )
 
   const apiStatusLabel =
     apiStatus === 'online' ? (
@@ -341,9 +363,12 @@ function App() {
     )
 
   const isAdmin = currentUser?.role === 'ADMIN'
+  const selectedZone = zones.find((z) => String(z.id) === String(reservationForm.zoneId))
+  const selectedZoneFree = selectedZone ? Number(selectedZone.free_spots ?? selectedZone.freeSpots) : null
+  const noSpots = selectedZoneFree !== null && selectedZoneFree <= 0
 
   return (
-    <>
+    <div className="app-root" data-theme={theme}>
       <nav className="navbar navbar-expand-lg navbar-dark bg-transparent py-3">
         <div className="container content-wrapper">
           <a className="navbar-brand d-flex align-items-center" href="#">
@@ -356,22 +381,14 @@ function App() {
             />
             ParkZone
           </a>
-          <button
-            className="navbar-toggler"
-            type="button"
-            data-bs-toggle="collapse"
-            data-bs-target="#mainNav"
-          >
+          <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
             <span className="navbar-toggler-icon"></span>
           </button>
           <div className="collapse navbar-collapse" id="mainNav">
             <ul className="navbar-nav me-auto mb-2 mb-lg-0">
               <li className="nav-item mx-2">
                 <button
-                  className={
-                    'nav-link btn btn-link p-0 ' +
-                    (activeSection === 'auth' ? 'active-section' : '')
-                  }
+                  className={'nav-link btn btn-link p-0 ' + (activeSection === 'auth' ? 'active-section' : '')}
                   onClick={() => setActiveSection('auth')}
                 >
                   <i className="bi bi-person-lines-fill me-1"></i> Auth
@@ -379,13 +396,11 @@ function App() {
               </li>
               <li className="nav-item mx-2">
                 <button
-                  className={
-                    'nav-link btn btn-link p-0 ' +
-                    (activeSection === 'zones' ? 'active-section' : '')
-                  }
+                  className={'nav-link btn btn-link p-0 ' + (activeSection === 'zones' ? 'active-section' : '')}
                   onClick={() => {
                     setActiveSection('zones')
                     loadZones()
+                    loadVehicles()
                   }}
                 >
                   <i className="bi bi-geo-alt-fill me-1"></i> Zones
@@ -393,10 +408,7 @@ function App() {
               </li>
               <li className="nav-item mx-2">
                 <button
-                  className={
-                    'nav-link btn btn-link p-0 ' +
-                    (activeSection === 'vehicles' ? 'active-section' : '')
-                  }
+                  className={'nav-link btn btn-link p-0 ' + (activeSection === 'vehicles' ? 'active-section' : '')}
                   onClick={() => {
                     setActiveSection('vehicles')
                     loadVehicles()
@@ -407,10 +419,7 @@ function App() {
               </li>
               <li className="nav-item mx-2">
                 <button
-                  className={
-                    'nav-link btn btn-link p-0 ' +
-                    (activeSection === 'reservations' ? 'active-section' : '')
-                  }
+                  className={'nav-link btn btn-link p-0 ' + (activeSection === 'reservations' ? 'active-section' : '')}
                   onClick={() => {
                     setActiveSection('reservations')
                     loadMyReservations()
@@ -420,15 +429,13 @@ function App() {
                 </button>
               </li>
             </ul>
+
             <div className="d-flex align-items-center gap-3">
               <span id="currentUserLabel" className="text-sm">
                 {userLabel}
               </span>
 
-              <button
-                className="btn btn-outline-light btn-sm"
-                onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-              >
+              <button className="btn btn-outline-light btn-sm" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
                 {theme === 'light' ? (
                   <>
                     <i className="bi bi-moon-stars me-1"></i> Dark
@@ -445,10 +452,7 @@ function App() {
                   <i className="bi bi-box-arrow-right me-1"></i> Logout
                 </button>
               ) : (
-                <button
-                  className="btn btn-outline-light btn-sm"
-                  onClick={() => setActiveSection('auth')}
-                >
+                <button className="btn btn-outline-light btn-sm" onClick={() => setActiveSection('auth')}>
                   <i className="bi bi-box-arrow-in-right me-1"></i> Kyçu
                 </button>
               )}
@@ -483,10 +487,7 @@ function App() {
         </div>
 
         {message.visible && (
-          <div
-            className={`alert alert-${message.type}`}
-            role="alert"
-          >
+          <div className={`alert alert-${message.type}`} role="alert">
             {message.text}
           </div>
         )}
@@ -495,7 +496,6 @@ function App() {
         {activeSection === 'auth' && (
           <>
             {!currentUser ? (
-              // NUK je i kyçur
               <div className="row g-4">
                 <div className="col-md-6 mx-auto">
                   <div className="card h-100">
@@ -517,45 +517,19 @@ function App() {
                         <>
                           <div className="mb-3">
                             <label className="form-label">Emri</label>
-                            <input
-                              className="form-control"
-                              value={regForm.name}
-                              onChange={(e) =>
-                                setRegForm((f) => ({ ...f, name: e.target.value }))
-                              }
-                            />
+                            <input className="form-control" value={regForm.name} onChange={(e) => setRegForm((f) => ({ ...f, name: e.target.value }))} />
                           </div>
                           <div className="mb-3">
                             <label className="form-label">Email</label>
-                            <input
-                              className="form-control"
-                              type="email"
-                              value={regForm.email}
-                              onChange={(e) =>
-                                setRegForm((f) => ({ ...f, email: e.target.value }))
-                              }
-                            />
+                            <input className="form-control" type="email" value={regForm.email} onChange={(e) => setRegForm((f) => ({ ...f, email: e.target.value }))} />
                           </div>
                           <div className="mb-3">
                             <label className="form-label">Fjalëkalimi</label>
-                            <input
-                              className="form-control"
-                              type="password"
-                              value={regForm.password}
-                              onChange={(e) =>
-                                setRegForm((f) => ({ ...f, password: e.target.value }))
-                              }
-                            />
+                            <input className="form-control" type="password" value={regForm.password} onChange={(e) => setRegForm((f) => ({ ...f, password: e.target.value }))} />
                           </div>
                           <div className="mb-3">
                             <label className="form-label">Roli</label>
-                            <select
-                              className="form-select"
-                              value={regForm.roleName}
-                              onChange={(e) =>
-                                setRegForm((f) => ({ ...f, roleName: e.target.value }))
-                              }
-                            >
+                            <select className="form-select" value={regForm.roleName} onChange={(e) => setRegForm((f) => ({ ...f, roleName: e.target.value }))}>
                               <option value="RESIDENT">RESIDENT</option>
                               <option value="ADMIN">ADMIN</option>
                               <option value="VISITOR">VISITOR</option>
@@ -567,11 +541,7 @@ function App() {
 
                           <p className="mt-3 text-secondary small text-center">
                             Ke llogari?
-                            <button
-                              type="button"
-                              className="btn btn-link p-0 ms-1 align-baseline"
-                              onClick={() => setShowRegister(false)}
-                            >
+                            <button type="button" className="btn btn-link p-0 ms-1 align-baseline" onClick={() => setShowRegister(false)}>
                               Kyçu këtu
                             </button>
                           </p>
@@ -580,36 +550,18 @@ function App() {
                         <>
                           <div className="mb-3">
                             <label className="form-label">Email</label>
-                            <input
-                              className="form-control"
-                              type="email"
-                              value={loginForm.email}
-                              onChange={(e) =>
-                                setLoginForm((f) => ({ ...f, email: e.target.value }))
-                              }
-                            />
+                            <input className="form-control" type="email" value={loginForm.email} onChange={(e) => setLoginForm((f) => ({ ...f, email: e.target.value }))} />
                           </div>
                           <div className="mb-3">
                             <label className="form-label">Fjalëkalimi</label>
-                            <input
-                              className="form-control"
-                              type="password"
-                              value={loginForm.password}
-                              onChange={(e) =>
-                                setLoginForm((f) => ({ ...f, password: e.target.value }))
-                              }
-                            />
+                            <input className="form-control" type="password" value={loginForm.password} onChange={(e) => setLoginForm((f) => ({ ...f, password: e.target.value }))} />
                           </div>
                           <button className="btn btn-success w-100" onClick={handleLogin}>
                             Kyçu
                           </button>
                           <p className="mt-3 text-secondary small text-center">
                             Nuk ke llogari?
-                            <button
-                              type="button"
-                              className="btn btn-link p-0 ms-1 align-baseline"
-                              onClick={() => setShowRegister(true)}
-                            >
+                            <button type="button" className="btn btn-link p-0 ms-1 align-baseline" onClick={() => setShowRegister(true)}>
                               Regjistrohu këtu
                             </button>
                           </p>
@@ -620,7 +572,6 @@ function App() {
                 </div>
               </div>
             ) : (
-              // JE i kyçur
               <div className="row g-4">
                 <div className="col-md-8">
                   <div className="card">
@@ -636,19 +587,12 @@ function App() {
                         <strong>Roli:</strong> {currentUser.role}
                       </p>
                       <p className="text-secondary small mb-3">
-                        Jeni i kyçur në sistem. Mund të menaxhoni zonat, veturat dhe
-                        rezervimet duke përdorur menunë lart.
+                        Jeni i kyçur në sistem. Mund të menaxhoni zonat, veturat dhe rezervimet duke përdorur menunë lart.
                       </p>
-                      <button
-                        className="btn btn-primary me-2"
-                        onClick={() => setActiveSection('zones')}
-                      >
+                      <button className="btn btn-primary me-2" onClick={() => setActiveSection('zones')}>
                         Shko te zonat e parkimit
                       </button>
-                      <button
-                        className="btn btn-outline-danger"
-                        onClick={logout}
-                      >
+                      <button className="btn btn-outline-danger" onClick={logout}>
                         <i className="bi bi-box-arrow-right me-1"></i> Çkyçu
                       </button>
                     </div>
@@ -658,7 +602,6 @@ function App() {
             )}
           </>
         )}
-
 
         {/* ZONES */}
         {activeSection === 'zones' && (
@@ -670,10 +613,7 @@ function App() {
                     <span>
                       <i className="bi bi-geo-alt-fill me-1 text-warning"></i> Zonat e parkimit
                     </span>
-                    <button
-                      className="btn btn-outline-light btn-sm"
-                      onClick={() => loadZones()}
-                    >
+                    <button className="btn btn-outline-light btn-sm" onClick={() => loadZones()}>
                       <i className="bi bi-arrow-clockwise me-1"></i> Refresh
                     </button>
                   </div>
@@ -686,6 +626,7 @@ function App() {
                             <th>Emri</th>
                             <th>Lokacioni</th>
                             <th>Tot. vendet</th>
+                            <th>Vende të lira</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -695,14 +636,18 @@ function App() {
                               <td>{z.name}</td>
                               <td>{z.location || ''}</td>
                               <td>{z.total_spots}</td>
+                              <td>
+                                <span className={z.free_spots <= 0 ? 'text-danger fw-semibold' : 'text-success fw-semibold'}>
+                                  {z.free_spots}
+                                </span>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
                     <p className="text-secondary small mb-0">
-                      <i className="bi bi-info-circle me-1"></i> Si RESIDENT mund të bësh
-                      rezervim nëpër këto zona.
+                      <i className="bi bi-info-circle me-1"></i> Si RESIDENT mund të bësh rezervim nëpër këto zona.
                     </p>
                   </div>
                 </div>
@@ -718,23 +663,11 @@ function App() {
                     <div className="card-body">
                       <div className="mb-3">
                         <label className="form-label">Emri i zonës</label>
-                        <input
-                          className="form-control"
-                          value={zoneForm.name}
-                          onChange={(e) =>
-                            setZoneForm((f) => ({ ...f, name: e.target.value }))
-                          }
-                        />
+                        <input className="form-control" value={zoneForm.name} onChange={(e) => setZoneForm((f) => ({ ...f, name: e.target.value }))} />
                       </div>
                       <div className="mb-3">
                         <label className="form-label">Lokacioni</label>
-                        <input
-                          className="form-control"
-                          value={zoneForm.location}
-                          onChange={(e) =>
-                            setZoneForm((f) => ({ ...f, location: e.target.value }))
-                          }
-                        />
+                        <input className="form-control" value={zoneForm.location} onChange={(e) => setZoneForm((f) => ({ ...f, location: e.target.value }))} />
                       </div>
                       <div className="mb-3">
                         <label className="form-label">Totali i vendeve</label>
@@ -742,12 +675,7 @@ function App() {
                           type="number"
                           className="form-control"
                           value={zoneForm.total_spots}
-                          onChange={(e) =>
-                            setZoneForm((f) => ({
-                              ...f,
-                              total_spots: e.target.value,
-                            }))
-                          }
+                          onChange={(e) => setZoneForm((f) => ({ ...f, total_spots: e.target.value }))}
                         />
                       </div>
                       <button className="btn btn-primary w-100" onClick={createZone}>
@@ -768,71 +696,54 @@ function App() {
                 <div className="row g-3">
                   <div className="col-md-3">
                     <label className="form-label">Zone ID</label>
-                    <input
-                      className="form-control"
-                      value={reservationForm.zoneId}
-                      onChange={(e) =>
-                        setReservationForm((f) => ({ ...f, zoneId: e.target.value }))
-                      }
-                    />
+                    <input className="form-control" value={reservationForm.zoneId} onChange={(e) => setReservationForm((f) => ({ ...f, zoneId: e.target.value }))} />
                   </div>
                   <div className="col-md-3">
                     <label className="form-label">Vehicle ID</label>
-                    <input
-                      className="form-control"
-                      value={reservationForm.vehicleId}
-                      onChange={(e) =>
-                        setReservationForm((f) => ({ ...f, vehicleId: e.target.value }))
-                      }
-                    />
+                    <select
+                        className="form-select"
+                        value={reservationForm.vehicleId}
+                        onChange={(e) =>
+                          setReservationForm((f) => ({ ...f, vehicleId: e.target.value }))
+                        }
+                      >
+                        <option value="">-- Zgjedh veturën tënde --</option>
+
+                        {vehicles.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {v.plate_number} {v.model ? `(${v.model})` : ''}
+                          </option>
+                        ))}
+                      </select>
                   </div>
                   <div className="col-md-3">
                     <label className="form-label">Start Date</label>
-                    <input
-                      type="date"
-                      className="form-control"
-                      onChange={(e) =>
-                        setReservationForm((f) => ({ ...f, start_date: e.target.value }))
-                      }
-                    />
+                    <input type="date" className="form-control" onChange={(e) => setReservationForm((f) => ({ ...f, start_date: e.target.value }))} />
                   </div>
                   <div className="col-md-3">
                     <label className="form-label">Start Time</label>
-                    <input
-                      type="time"
-                      className="form-control"
-                      onChange={(e) =>
-                        setReservationForm((f) => ({ ...f, start_time_simple: e.target.value }))
-                      }
-                    />
+                    <input type="time" className="form-control" onChange={(e) => setReservationForm((f) => ({ ...f, start_time_simple: e.target.value }))} />
                   </div>
                   <div className="col-md-3">
                     <label className="form-label">End Date</label>
-                    <input
-                      type="date"
-                      className="form-control"
-                      onChange={(e) =>
-                        setReservationForm((f) => ({ ...f, end_date: e.target.value }))
-                      }
-                    />
+                    <input type="date" className="form-control" onChange={(e) => setReservationForm((f) => ({ ...f, end_date: e.target.value }))} />
                   </div>
                   <div className="col-md-3">
                     <label className="form-label">End Time</label>
-                    <input
-                      type="time"
-                      className="form-control"
-                      onChange={(e) =>
-                        setReservationForm((f) => ({ ...f, end_time_simple: e.target.value }))
-                      }
-                    />
+                    <input type="time" className="form-control" onChange={(e) => setReservationForm((f) => ({ ...f, end_time_simple: e.target.value }))} />
                   </div>
                 </div>
-                <button
-                  className="btn btn-primary mt-3"
-                  onClick={createReservation}
-                >
+
+                <button className="btn btn-primary mt-3" onClick={createReservation} disabled={noSpots} title={noSpots ? 'S’ka vende të lira në këtë zonë' : ''}>
                   Konfirmo rezervimin
                 </button>
+
+                {noSpots && (
+                <div className="mt-2 alert alert-danger py-2 mb-0">
+                  S’ka vende të lira në këtë zonë për momentin. Zgjidh një zonë tjetër.
+                </div>
+                )}
+
               </div>
             </div>
           </>
@@ -850,36 +761,15 @@ function App() {
                 <div className="card-body">
                   <div className="mb-3">
                     <label className="form-label">Targa</label>
-                    <input
-                      className="form-control"
-                      value={vehicleForm.plate_number}
-                      onChange={(e) =>
-                        setVehicleForm((f) => ({
-                          ...f,
-                          plate_number: e.target.value,
-                        }))
-                      }
-                    />
+                    <input className="form-control" value={vehicleForm.plate_number} onChange={(e) => setVehicleForm((f) => ({ ...f, plate_number: e.target.value }))} />
                   </div>
                   <div className="mb-3">
                     <label className="form-label">Modeli</label>
-                    <input
-                      className="form-control"
-                      value={vehicleForm.model}
-                      onChange={(e) =>
-                        setVehicleForm((f) => ({ ...f, model: e.target.value }))
-                      }
-                    />
+                    <input className="form-control" value={vehicleForm.model} onChange={(e) => setVehicleForm((f) => ({ ...f, model: e.target.value }))} />
                   </div>
                   <div className="mb-3">
                     <label className="form-label">Ngjyra</label>
-                    <input
-                      className="form-control"
-                      value={vehicleForm.color}
-                      onChange={(e) =>
-                        setVehicleForm((f) => ({ ...f, color: e.target.value }))
-                      }
-                    />
+                    <input className="form-control" value={vehicleForm.color} onChange={(e) => setVehicleForm((f) => ({ ...f, color: e.target.value }))} />
                   </div>
                   <button className="btn btn-primary w-100" onClick={addVehicle}>
                     Shto veturën
@@ -892,10 +782,7 @@ function App() {
               <div className="card h-100">
                 <div className="card-header d-flex justify-content-between">
                   <span>Veturat e mia</span>
-                  <button
-                    className="btn btn-outline-light btn-sm"
-                    onClick={loadVehicles}
-                  >
+                  <button className="btn btn-outline-light btn-sm" onClick={loadVehicles}>
                     <i className="bi bi-arrow-clockwise me-1"></i> Refresh
                   </button>
                 </div>
@@ -908,6 +795,7 @@ function App() {
                           <th>Targa</th>
                           <th>Modeli</th>
                           <th>Ngjyra</th>
+                          <th>Veprime</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -917,14 +805,21 @@ function App() {
                             <td>{v.plate_number}</td>
                             <td>{v.model || ''}</td>
                             <td>{v.color || ''}</td>
+
+                            <td>
+                              <button
+                                className="btn btn-sm btn-danger"
+                                onClick={() => deleteVehicle(v.id)}
+                              >
+                                <i className="bi bi-trash"></i>
+                              </button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
-                  <p className="small text-secondary mb-0">
-                    Përdor ID e veturës për të krijuar rezervim në seksionin Zones.
-                  </p>
+                  <p className="small text-secondary mb-0">Përdor ID e veturës për të krijuar rezervim në seksionin Zones.</p>
                 </div>
               </div>
             </div>
@@ -938,14 +833,30 @@ function App() {
               <span>
                 <i className="bi bi-calendar-check me-1 text-warning"></i> Rezervimet e mia
               </span>
-              <button
-                className="btn btn-outline-light btn-sm"
-                onClick={loadMyReservations}
-              >
+              <button className="btn btn-outline-light btn-sm" onClick={loadMyReservations}>
                 <i className="bi bi-arrow-clockwise me-1"></i> Refresh
               </button>
             </div>
+
             <div className="card-body">
+              <div className="btn-group mb-3" role="group">
+                <button
+                  type="button"
+                  className={'btn ' + (reservationTab === 'active' ? 'btn-primary' : 'btn-outline-primary')}
+                  onClick={() => setReservationTab('active')}
+                >
+                  Aktive
+                </button>
+
+                <button
+                  type="button"
+                  className={'btn ' + (reservationTab === 'history' ? 'btn-secondary' : 'btn-outline-secondary')}
+                  onClick={() => setReservationTab('history')}
+                >
+                  Historia
+                </button>
+              </div>
+
               <div className="table-responsive">
                 <table className="table table-dark-custom table-striped align-middle">
                   <thead>
@@ -958,37 +869,38 @@ function App() {
                       <th>End</th>
                     </tr>
                   </thead>
+
                   <tbody>
-                    {reservations.map((r) => (
-                      <tr key={r.id}>
-                        <td>{r.id}</td>
-                        <td>{r.ParkingZone ? r.ParkingZone.name : r.ParkingZoneId}</td>
-                        <td>{r.Vehicle ? r.Vehicle.plate_number : r.VehicleId}</td>
-                        <td>
-                          <span
-                            className={
-                              'badge bg-' +
-                              (r.status === 'ACTIVE' ? 'success' : 'secondary')
-                            }
-                          >
-                            {r.status}
-                          </span>
-                        </td>
-                        <td>{new Date(r.start_time).toLocaleString()}</td>
-                        <td>{new Date(r.end_time).toLocaleString()}</td>
-                      </tr>
-                    ))}
+                    {reservations
+                      .filter((r) => (reservationTab === 'active' ? r.status === 'ACTIVE' : r.status === 'EXPIRED'))
+                      .map((r) => (
+                        <tr key={r.id}>
+                          <td>{r.id}</td>
+                          <td>{r.ParkingZone ? r.ParkingZone.name : r.ParkingZoneId}</td>
+                          <td>{r.Vehicle ? r.Vehicle.plate_number : r.VehicleId}</td>
+                          <td>
+                            <span className={'badge ' + (r.status === 'ACTIVE' ? 'bg-success' : 'bg-danger')}>
+                              {r.status === 'ACTIVE' ? 'Aktive' : 'E skaduar'}
+                            </span>
+                          </td>
+                          <td>{new Date(r.start_time).toLocaleString()}</td>
+                          <td>{new Date(r.end_time).toLocaleString()}</td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </div>
-              <p className="small text-secondary mb-0">
-                Rezervimet tuaja aktive dhe të kaluarat shfaqen më poshtë.
-              </p>
+
+              {reservations.filter((r) => (reservationTab === 'active' ? r.status === 'ACTIVE' : r.status === 'EXPIRED')).length === 0 && (
+                <p className="small text-secondary mb-0">
+                  {reservationTab === 'active' ? 'Nuk keni rezervime aktive.' : 'Nuk ka rezervime të përfunduara (History) ende.'}
+                </p>
+              )}
             </div>
           </div>
         )}
       </div>
-    </>
+    </div>
   )
 }
 

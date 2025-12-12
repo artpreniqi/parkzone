@@ -12,20 +12,21 @@ body {
 }
 
 h1, h2, h3, h4 {
-  color: #1f2937 !important; /* dark blue-gray */
+  color: #1f2937 !important;
   font-weight: 600 !important;
 }
 
+/* ✅ Mos e detyro me !important për dark mode — e rregullojmë poshtë te dark-theme */
 p, span, label {
-  color: #333 !important;
+  color: #333;
 }
 
 .text-secondary {
-  color: #6b7280 !important; /* nice gray tone */
+  color: #6b7280 !important;
 }
 
 ::placeholder {
-  color: #9ca3af !important; /* light gray for placeholders */
+  color: #9ca3af !important;
 }
 
 /* ============================
@@ -67,7 +68,7 @@ p, span, label {
 .glass {
   padding: 24px 28px;
   border-radius: 14px;
-  background: white;
+  background: #ffffff;
   box-shadow: 0 2px 12px rgba(0,0,0,0.08);
   border: 1px solid #e5e7eb;
 }
@@ -167,8 +168,9 @@ p, span, label {
   font-size: 20px;
 }
 
+/* ✅ Mos e detyro tabelën white me !important, se e prish dark mode */
 .table {
-  background: white !important;
+  background: #ffffff;
   border-radius: 12px !important;
   overflow: hidden;
   box-shadow: 0 2px 10px rgba(0,0,0,0.06) !important;
@@ -184,7 +186,7 @@ p, span, label {
 }
 
 /* ============================
-   FOOTER (Nëse të duhet më vonë)
+   FOOTER
    ============================ */
 
 footer {
@@ -195,21 +197,33 @@ footer {
 }
 
 /* ==========================================
-   DARK MODE OVERRIDES (profi nivel)
+   DARK MODE OVERRIDES (FIX WHITE PARTS)
    ========================================== */
 
 body.dark-theme {
-  background-color: #020617 !important;   /* very dark blue/black */
+  background-color: #020617 !important;
+  color: #e5e7eb !important;
+}
+
+body.dark-theme {
+  background-color: #020617 !important;
+  color: #e5e7eb !important;
+
+  /* KJO ËSHTË ÇELËSI 🔑 */
+  color-scheme: dark;
+}
+
+/* Tekst i qartë në dark mode (për krejt p/span/label) */
+body.dark-theme p,
+body.dark-theme span,
+body.dark-theme label {
   color: #e5e7eb !important;
 }
 
 body.dark-theme h1,
 body.dark-theme h2,
 body.dark-theme h3,
-body.dark-theme h4,
-body.dark-theme p,
-body.dark-theme span,
-body.dark-theme label {
+body.dark-theme h4 {
   color: #e5e7eb !important;
 }
 
@@ -222,12 +236,14 @@ body.dark-theme .nav-link {
   color: #e5e7eb !important;
 }
 
+/* Glass */
 body.dark-theme .glass {
-  background: rgba(15, 23, 42, 0.9);
-  border-color: #1f2937;
-  box-shadow: 0 4px 18px rgba(15,23,42,0.7);
+  background: rgba(15, 23, 42, 0.90) !important;
+  border-color: #1f2937 !important;
+  box-shadow: 0 4px 18px rgba(15,23,42,0.7) !important;
 }
 
+/* Cards */
 body.dark-theme .card {
   background-color: #0f172a !important;
   color: #e5e7eb !important;
@@ -237,27 +253,60 @@ body.dark-theme .card {
 body.dark-theme .card-header {
   background-color: #020617 !important;
   border-bottom: 1px solid #1f2937 !important;
-}
-
-body.dark-theme .table {
-  background-color: #020617 !important;
   color: #e5e7eb !important;
-  box-shadow: 0 2px 10px rgba(15,23,42,0.8) !important;
 }
 
-body.dark-theme .table thead {
+/* TABLE FIX: këtu i zhduk pjesët e bardha (Vehicles / Reservations / Zones) */
+body.dark-theme .table,
+body.dark-theme table {
+  background-color: rgba(15, 23, 42, 0.85) !important;
+  color: #e5e7eb !important;
+}
+
+body.dark-theme .table thead,
+body.dark-theme .table thead th {
   background-color: #111827 !important;
+  color: #e5e7eb !important;
+  border-color: #1f2937 !important;
 }
 
-body.dark-theme .table tbody tr:hover {
-  background-color: #111827 !important;
+body.dark-theme .table tbody tr {
+  background-color: rgba(255,255,255,0.04) !important;
 }
 
+body.dark-theme .table tbody td,
+body.dark-theme .table tbody th {
+  background-color: transparent !important;
+  color: #e5e7eb !important;
+  border-color: #1f2937 !important;
+}
+
+body.dark-theme .table-striped > tbody > tr:nth-of-type(odd) > * {
+  background-color: rgba(255,255,255,0.03) !important;
+}
+
+body.dark-theme .table-hover > tbody > tr:hover > * {
+  background-color: rgba(255,255,255,0.08) !important;
+}
+
+/* Nëse Bootstrap po fut bg-light/bg-white diku */
+body.dark-theme .bg-white,
+body.dark-theme .bg-light,
+body.dark-theme .table-light {
+  background-color: rgba(15, 23, 42, 0.85) !important;
+  color: #e5e7eb !important;
+}
+
+/* Inputs */
 body.dark-theme .form-control,
 body.dark-theme .form-select {
   background-color: #020617 !important;
   color: #e5e7eb !important;
   border-color: #374151 !important;
+}
+
+body.dark-theme .form-control::placeholder {
+  color: rgba(229,231,235,0.55) !important;
 }
 
 body.dark-theme .form-control:focus,
@@ -271,13 +320,37 @@ body.dark-theme .text-secondary {
 }
 
 body.dark-theme .api-status {
-  background-color: #020617;
-  border-color: #1f2937;
-  color: #e5e7eb;
+  background-color: #020617 !important;
+  border-color: #1f2937 !important;
+  color: #e5e7eb !important;
 }
 
 body.dark-theme .alert {
-  background-color: #111827;
-  border-color: #1f2937;
-  color: #e5e7eb;
+  background-color: #111827 !important;
+  border-color: #1f2937 !important;
+  color: #e5e7eb !important;
 }
+
+
+/* DATE & TIME INPUT */
+
+body.dark-theme input[type="date"],
+body.dark-theme input[type="time"],
+body.dark-theme input[type="datetime-local"] {
+  background-color: #020617 !important;
+  color: #e5e7eb !important;
+  border: 1px solid #374151 !important;
+}
+
+body.dark-theme input[type="date"]::-webkit-calendar-picker-indicator,
+body.dark-theme input[type="time"]::-webkit-calendar-picker-indicator {
+  opacity: 1;
+  cursor: pointer;
+}
+
+body.dark-theme input[type="date"],
+body.dark-theme input[type="time"] {
+  color-scheme: dark;
+}
+
+
