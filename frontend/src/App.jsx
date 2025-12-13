@@ -33,6 +33,9 @@ function App() {
   const [theme, setTheme] = useState('light') // 'light' | 'dark'
   const [reservationTab, setReservationTab] = useState('active') // 'active' | 'history'
 
+  const [showPayModal, setShowPayModal] = useState(false)
+  const [selectedReservation, setSelectedReservation] = useState(null)
+
   const [payModalOpen, setPayModalOpen] = useState(false)
   const [payTarget, setPayTarget] = useState(null)
   const [payLoading, setPayLoading] = useState(false)
@@ -42,7 +45,14 @@ function App() {
   cardNumber: '',
   exp: '',
   cvc: '',
-})
+  })
+
+  const [profileForm, setProfileForm] = useState({ name: '', email: '' })
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmNewPassword: '',
+  })
 
   // ADMIN DASHBOARD
   const [adminStats, setAdminStats] = useState(null)
@@ -149,6 +159,109 @@ function App() {
       console.warn('Could not fetch /users/me', err)
     }
   }
+
+async function loadProfile() {
+  if (!authToken) {
+    showMessage('Duhet të jesh i kyçur', 'warning')
+    return
+  }
+  try {
+    const user = await apiRequest('/users/me', { method: 'GET', token: authToken })
+    setProfileForm({
+      name: user.name || '',
+      email: user.email || '',
+    })
+  } catch (err) {
+    showMessage(err.message, 'danger')
+  }
+}
+
+async function updateProfile() {
+  if (!authToken) {
+    showMessage('Duhet të jesh i kyçur', 'warning')
+    return
+  }
+  try {
+    const { name, email } = profileForm
+    if (!email) {
+      showMessage('Email është i detyrueshëm', 'warning')
+      return
+    }
+
+    const res = await apiRequest('/users/me', {
+      method: 'PUT',
+      token: authToken,
+      body: { name, email },
+    })
+
+    // update label n’navbar
+    await fetchMe(authToken)
+    showMessage(res.message || 'Profili u përditësua', 'success')
+  } catch (err) {
+    showMessage(err.message, 'danger')
+  }
+}
+
+async function changePassword() {
+  if (!authToken) {
+    showMessage('Duhet të jesh i kyçur', 'warning')
+    return
+  }
+
+  try {
+    const { currentPassword, newPassword, confirmNewPassword } = passwordForm
+
+    if (!currentPassword || !newPassword || !confirmNewPassword) {
+      showMessage('Plotëso të gjitha fushat e password-it', 'warning')
+      return
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      showMessage('Password-i i ri nuk përputhet', 'warning')
+      return
+    }
+
+    await apiRequest('/users/me/password', {
+      method: 'PUT',
+      token: authToken,
+      body: { currentPassword, newPassword },
+    })
+
+    setPasswordForm({ currentPassword: '', newPassword: '', confirmNewPassword: '' })
+    showMessage('Password u ndryshua me sukses', 'success')
+  } catch (err) {
+    showMessage(err.message, 'danger')
+  }
+}
+
+async function deleteAccount() {
+  if (!authToken) {
+    showMessage('Duhet të jesh i kyçur', 'warning');
+    return;
+  }
+
+  const ok = window.confirm(
+    'A je i sigurt? Ky veprim e fshin account-in përgjithmonë.'
+  );
+  if (!ok) return;
+
+  try {
+    const res = await apiRequest('/users/me', {
+      method: 'DELETE',
+      token: authToken,
+    });
+
+    showMessage(res.message || 'Account u fshi', 'success');
+
+    // logout + ktheje te auth
+    setAuthToken(null);
+    setCurrentUser(null);
+    setActiveSection('auth');
+  } catch (err) {
+    showMessage(err.message, 'danger');
+  }
+}
+
 
   // -------- AUTH --------
   async function handleRegister() {
@@ -354,6 +467,8 @@ function App() {
   setPayTarget(reservation)
   setPayForm({ cardName: '', cardNumber: '', exp: '', cvc: '' })
   setPayModalOpen(true)
+  setSelectedReservation(r)
+  setShowPayModal(true)
 }
 
 function closePayModal() {
@@ -471,7 +586,7 @@ async function simulatePay() {
             <span className="navbar-toggler-icon"></span>
           </button>
           <div className="collapse navbar-collapse" id="mainNav">
-            <ul className="navbar-nav me-auto mb-2 mb-lg-0">
+            <ul className="navbar-nav me-auto mb-2 mb-lg-0 gap-2">
               <li className="nav-item mx-2">
                 <button
                   className={'nav-link btn btn-link p-0 ' + (activeSection === 'auth' ? 'active-section' : '')}
@@ -514,6 +629,22 @@ async function simulatePay() {
                   <i className="bi bi-calendar-check me-1"></i> Reservations
                 </button>
               </li>
+              {authToken && (
+                <li className="nav-item">
+                  <button
+                    className={
+                      'nav-link btn btn-link p-0 ' +
+                      (activeSection === 'profile' ? 'active-section' : '')
+                    }
+                    onClick={() => {
+                      setActiveSection('profile')
+                      loadProfile()
+                    }}
+                  >
+                    <i className="bi bi-person-gear me-1"></i> Profile
+                  </button>
+                </li>
+              )}
               {isAdmin && (
                 <li className="nav-item">
                   <button
@@ -1130,6 +1261,143 @@ async function simulatePay() {
             <div className="small text-secondary mt-3">
               * Kjo është pagesë e simuluar për demo (pa Stripe).
             </div>
+          </div>
+        </div>
+      )}
+      
+      {showPayModal && (
+        <div className="pay-modal-overlay">
+          <div className="pay-modal position-relative">
+
+            {/* CLOSE BUTTON */}
+            <button
+              className="btn-close pay-modal-close"
+              onClick={() => {
+                setShowPayModal(false)
+                setSelectedReservation(null)
+              }}
+            ></button>
+
+            {/* CONTENT */}
+            <h5 className="mb-3">
+              Pagesa për rezervimin #{selectedReservation?.id}
+            </h5>
+
+            {/* payment content */}
+          </div>
+        </div>
+      )}
+
+
+      {/* PROFILE */}
+      {activeSection === 'profile' && (
+        <div className="row justify-content-center">
+          <div className="col-lg-6 col-md-8">
+              <div className="row g-4">
+                <div className="col-md-6">
+                  <div className="card h-100">
+                    <div className="card-header">
+                      <i className="bi bi-person-vcard me-1 text-info"></i> Edit Profile
+                    </div>
+                    <div className="card-body">
+                      <div className="mb-3">
+                        <label className="form-label">Emri</label>
+                        <input
+                          className="form-control"
+                          value={profileForm.name}
+                          onChange={(e) => setProfileForm((f) => ({ ...f, name: e.target.value }))}
+                          placeholder="Emri dhe mbiemri"
+                        />
+                      </div>
+
+                      <div className="mb-3">
+                        <label className="form-label">Email</label>
+                        <input
+                          className="form-control"
+                          type="email"
+                          value={profileForm.email}
+                          onChange={(e) => setProfileForm((f) => ({ ...f, email: e.target.value }))}
+                          placeholder="email@example.com"
+                        />
+                      </div>
+
+                      <button className="btn btn-primary w-100" onClick={updateProfile}>
+                        <i className="bi bi-save me-1"></i> Ruaj ndryshimet
+                      </button>
+
+                      <p className="small text-secondary mt-3 mb-0">
+                        Këto ndryshime ruhen në databazë dhe shfaqen edhe në navbar.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="col-md-6">
+                  <div className="card h-100">
+                    <div className="card-header">
+                      <i className="bi bi-shield-lock-fill me-1 text-warning"></i> Change Password
+                    </div>
+                    <div className="card-body">
+                      <div className="mb-3">
+                        <label className="form-label">Password aktual</label>
+                        <input
+                          className="form-control"
+                          type="password"
+                          value={passwordForm.currentPassword}
+                          onChange={(e) =>
+                            setPasswordForm((f) => ({ ...f, currentPassword: e.target.value }))
+                          }
+                        />
+                      </div>
+
+                      <div className="mb-3">
+                        <label className="form-label">Password i ri</label>
+                        <input
+                          className="form-control"
+                          type="password"
+                          value={passwordForm.newPassword}
+                          onChange={(e) =>
+                            setPasswordForm((f) => ({ ...f, newPassword: e.target.value }))
+                          }
+                        />
+                      </div>
+
+                      <div className="mb-3">
+                        <label className="form-label">Konfirmo password-in e ri</label>
+                        <input
+                          className="form-control"
+                          type="password"
+                          value={passwordForm.confirmNewPassword}
+                          onChange={(e) =>
+                            setPasswordForm((f) => ({ ...f, confirmNewPassword: e.target.value }))
+                          }
+                        />
+                      </div>
+
+                      <button className="btn btn-warning w-100" onClick={changePassword}>
+                        <i className="bi bi-key-fill me-1"></i> Ndrysho password
+                      </button>
+
+                      <p className="small text-secondary mt-3 mb-0">
+                        Për siguri, duhet ta shkruash password-in aktual.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <hr className="my-4" />
+                  <div className="d-flex justify-content-between align-items-center">
+                    <div>
+                      <div className="fw-semibold">Fshi account</div>
+                      <div className="small text-secondary">
+                        Ky veprim është i pakthyeshëm (nuk mund të rikthehet).
+                      </div>
+                    </div>
+
+                    <button className="btn btn-outline-danger" onClick={deleteAccount}>
+                      <i className="bi bi-trash3 me-1"></i> Delete Account
+                    </button>
+                  </div>
+              </div>
           </div>
         </div>
       )}
