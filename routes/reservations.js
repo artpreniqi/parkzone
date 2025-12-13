@@ -47,21 +47,108 @@ router.post('/', auth, async (req, res) => {
       });
     }
 
+    // ---- PRICE CALC ----
+    const start = new Date(start_time);
+    const end = new Date(end_time);
+
+    if (isNaN(start) || isNaN(end) || end <= start) {
+      return res.status(400).json({ message: 'Koha e rezervimit nuk është valide' });
+    }
+
+    const diffMs = end - start;
+    const hours = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60))); // rrumbullak lart, min 1 orë
+    const pricePerHour = Number(zone.price_per_hour || 1.5);
+    const totalPrice = Number((hours * pricePerHour).toFixed(2));
+
+
     const reservation = await Reservation.create({
       UserId: req.user.id,
       VehicleId: vehicleId,
       ParkingZoneId: zoneId,
       start_time,
       end_time,
-      status: 'ACTIVE',
+      total_price: totalPrice,
+      status: 'PENDING_PAYMENT'
     });
 
-    res.json({ reservation, freeSpotsAfter: freeSpots - 1 });
+    res.json({
+      reservation,
+      freeSpotsAfter: freeSpots - 1,
+      pricing: { hours, pricePerHour, totalPrice }
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Error creating reservation' });
   }
 });
+
+router.post('/:id/pay', auth, async (req, res) => {
+  const { id } = req.params
+
+  try {
+    const reservation = await Reservation.findOne({
+      where: { id, UserId: req.user.id },
+      include: [ParkingZone, Vehicle],
+    })
+
+    if (!reservation) return res.status(404).json({ message: 'Reservation not found' })
+
+    if (reservation.status === 'ACTIVE') {
+      return res.json({ message: 'Already paid', reservation })
+    }
+
+    if (reservation.status === 'EXPIRED' || reservation.status === 'CANCELLED') {
+      return res.status(409).json({ message: `Cannot pay. Status: ${reservation.status}` })
+    }
+
+    // nëse koha ka kaluar, mos lejo pagesë
+    const now = new Date()
+    if (new Date(reservation.end_time) < now) {
+      reservation.status = 'EXPIRED'
+      await reservation.save()
+      return res.status(409).json({ message: 'Reservation already expired' })
+    }
+
+    // Re-check availability (nëse dikush tjetër e ka zënë vendin ndërkohë)
+    const zoneId = reservation.ParkingZoneId
+    const start_time = reservation.start_time
+    const end_time = reservation.end_time
+
+    const zone = await ParkingZone.findByPk(zoneId)
+    if (!zone) return res.status(404).json({ message: 'Zone not found' })
+
+    if (zone.status !== 'ACTIVE') {
+      reservation.status = 'CANCELLED'
+      await reservation.save()
+      return res.status(403).json({ message: 'Zone is INACTIVE, payment cancelled' })
+    }
+
+    const reservedCount = await Reservation.count({
+      where: {
+        ParkingZoneId: zoneId,
+        status: 'ACTIVE',
+        start_time: { [Op.lt]: end_time },
+        end_time: { [Op.gt]: start_time },
+      },
+    })
+
+    const freeSpots = zone.total_spots - reservedCount
+    if (freeSpots <= 0) {
+      reservation.status = 'CANCELLED'
+      await reservation.save()
+      return res.status(409).json({ message: 'No free spots anymore. Payment cancelled.' })
+    }
+
+    reservation.status = 'ACTIVE'
+    await reservation.save()
+
+    return res.json({ message: 'Payment successful', reservation })
+  } catch (err) {
+    console.error('PAY ERROR:', err)
+    return res.status(500).json({ message: 'Error processing payment' })
+  }
+})
+
 
 // Merr rezervimet e përdoruesit të kyçur (auto-expire)
 router.get('/my', auth, async (req, res) => {

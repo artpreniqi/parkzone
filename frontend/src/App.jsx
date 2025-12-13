@@ -33,11 +33,21 @@ function App() {
   const [theme, setTheme] = useState('light') // 'light' | 'dark'
   const [reservationTab, setReservationTab] = useState('active') // 'active' | 'history'
 
+  const [payModalOpen, setPayModalOpen] = useState(false)
+  const [payTarget, setPayTarget] = useState(null)
+  const [payLoading, setPayLoading] = useState(false)
+
+  const [payForm, setPayForm] = useState({
+  cardName: '',
+  cardNumber: '',
+  exp: '',
+  cvc: '',
+})
+
   // ADMIN DASHBOARD
   const [adminStats, setAdminStats] = useState(null)
   const [adminReservations, setAdminReservations] = useState([])
   const [loadingAdmin, setLoadingAdmin] = useState(false)
-
 
   // forms
   const [regForm, setRegForm] = useState({
@@ -339,6 +349,50 @@ function App() {
       showMessage(err.message, 'danger')
     }
   }
+
+ function openPayModal(reservation) {
+  setPayTarget(reservation)
+  setPayForm({ cardName: '', cardNumber: '', exp: '', cvc: '' })
+  setPayModalOpen(true)
+}
+
+function closePayModal() {
+  setPayModalOpen(false)
+  setPayTarget(null)
+}
+
+async function simulatePay() {
+  if (!payTarget) return
+
+  const { cardName, cardNumber, exp, cvc } = payForm
+  const cleanCard = cardNumber.replace(/\s/g, '')
+
+  if (!cardName || cleanCard.length < 12 || !exp || cvc.length < 3) {
+    showMessage('Plotëso të dhënat e kartës (simulim)', 'warning')
+    return
+  }
+
+  try {
+    setPayLoading(true)
+
+    // “real feel”
+    await new Promise((r) => setTimeout(r, 1000))
+
+    await apiRequest(`/reservations/${payTarget.id}/pay`, {
+      method: 'POST',
+      token: authToken,
+    })
+
+    showMessage('Pagesa u kry me sukses ✅', 'success')
+    closePayModal()
+    loadMyReservations()
+  } catch (err) {
+    showMessage(err.message, 'danger')
+  } finally {
+    setPayLoading(false)
+  }
+}
+
 
   // helpers
   const userLabel = currentUser ? (
@@ -881,9 +935,12 @@ function App() {
               <span>
                 <i className="bi bi-calendar-check me-1 text-warning"></i> Rezervimet e mia
               </span>
-              <button className="btn btn-outline-light btn-sm" onClick={loadMyReservations}>
-                <i className="bi bi-arrow-clockwise me-1"></i> Refresh
-              </button>
+                <button
+                  className="btn btn-outline-light btn-sm"
+                  onClick={loadMyReservations}
+                >
+                  <i className="bi bi-arrow-clockwise me-1"></i> Refresh
+                </button>
             </div>
 
             <div className="card-body">
@@ -905,6 +962,8 @@ function App() {
                 </button>
               </div>
 
+              
+
               <div className="table-responsive">
                 <table className="table table-dark-custom table-striped align-middle">
                   <thead>
@@ -915,26 +974,55 @@ function App() {
                       <th>Status</th>
                       <th>Start</th>
                       <th>End</th>
+                      <th>Veprime</th>
                     </tr>
                   </thead>
 
                   <tbody>
                     {reservations
-                      .filter((r) => (reservationTab === 'active' ? r.status === 'ACTIVE' : r.status === 'EXPIRED'))
+                      .filter((r) =>
+                        reservationTab === 'active'
+                          ? r.status === 'ACTIVE' || r.status === 'PENDING_PAYMENT'
+                          : r.status === 'EXPIRED' || r.status === 'CANCELLED'
+                      )
                       .map((r) => (
-                        <tr key={r.id}>
-                          <td>{r.id}</td>
-                          <td>{r.ParkingZone ? r.ParkingZone.name : r.ParkingZoneId}</td>
-                          <td>{r.Vehicle ? r.Vehicle.plate_number : r.VehicleId}</td>
-                          <td>
-                            <span className={'badge ' + (r.status === 'ACTIVE' ? 'bg-success' : 'bg-danger')}>
-                              {r.status === 'ACTIVE' ? 'Aktive' : 'E skaduar'}
-                            </span>
-                          </td>
-                          <td>{new Date(r.start_time).toLocaleString()}</td>
-                          <td>{new Date(r.end_time).toLocaleString()}</td>
-                        </tr>
-                      ))}
+                      <tr key={r.id}>
+                        <td>{r.id}</td>
+                        <td>{r.ParkingZone ? r.ParkingZone.name : r.ParkingZoneId}</td>
+                        <td>{r.Vehicle ? r.Vehicle.plate_number : r.VehicleId}</td>
+                        <td>
+                          <span
+                            className={
+                              'badge bg-' +
+                              (r.status === 'ACTIVE'
+                                ? 'success'
+                                : r.status === 'PENDING_PAYMENT'
+                                ? 'warning text-dark'
+                                : r.status === 'EXPIRED'
+                                ? 'danger'
+                                : 'secondary')
+                            }
+                          >
+                            {r.status}
+                          </span>
+                        </td>
+                        <td>{new Date(r.start_time).toLocaleString()}</td>
+                        <td>{new Date(r.end_time).toLocaleString()}</td>
+
+                        {/* VEPRIME (PAY NOW) */}
+                        <td>
+                          {r.status === 'PENDING_PAYMENT' && (
+                            <button
+                              className="btn btn-warning btn-sm"
+                              onClick={() => openPayModal(r)}
+                            >
+                              <i className="bi bi-credit-card me-1"></i>
+                              Pay € {Number(r.total_price || 0).toFixed(2)}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -957,6 +1045,94 @@ function App() {
         )}
 
       </div>
+      {payModalOpen && (
+        <div className="pz-modal-backdrop">
+          <div className="pz-modal">
+            <div className="d-flex justify-content-between align-items-center mb-2">
+              <h5 className="mb-0">
+                <i className="bi bi-lock-fill me-2 text-success"></i>
+                Checkout (Simulated)
+              </h5>
+              <button className="btn btn-sm btn-outline-light" onClick={closePayModal}>
+                <i className="bi bi-x-lg"></i>
+              </button>
+            </div>
+
+            <div className="small text-secondary mb-3">
+              Reservation #{payTarget?.id} • {payTarget?.ParkingZone?.name || 'Zone'} •{' '}
+              {payTarget?.Vehicle?.plate_number || 'Vehicle'}
+            </div>
+
+            <div className="row g-2">
+              <div className="col-12">
+                <label className="form-label">Cardholder Name</label>
+                <input
+                  className="form-control"
+                  value={payForm.cardName}
+                  onChange={(e) => setPayForm((p) => ({ ...p, cardName: e.target.value }))}
+                />
+              </div>
+
+              <div className="col-12">
+                <label className="form-label">Card Number</label>
+                <input
+                  className="form-control"
+                  placeholder="4242 4242 4242 4242"
+                  value={payForm.cardNumber}
+                  onChange={(e) => setPayForm((p) => ({ ...p, cardNumber: e.target.value }))}
+                />
+              </div>
+
+              <div className="col-6">
+                <label className="form-label">Expiry</label>
+                <input
+                  className="form-control"
+                  placeholder="MM/YY"
+                  value={payForm.exp}
+                  onChange={(e) => setPayForm((p) => ({ ...p, exp: e.target.value }))}
+                />
+              </div>
+
+              <div className="col-6">
+                <label className="form-label">CVC</label>
+                <input
+                  className="form-control"
+                  placeholder="123"
+                  value={payForm.cvc}
+                  onChange={(e) => setPayForm((p) => ({ ...p, cvc: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="d-flex justify-content-between align-items-center mt-3">
+              <div>
+                <div className="small text-secondary">Amount</div>
+                <div className="fw-bold">
+                   € {Number(payTarget?.total_price || 0).toFixed(2)}
+                </div>
+              </div>
+
+              <button className="btn btn-success" onClick={simulatePay} disabled={payLoading}>
+                {payLoading ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2"></span>
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <i className="bi bi-credit-card me-1"></i>
+                    Pay € {Number(payTarget?.total_price || 0).toFixed(2)}
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="small text-secondary mt-3">
+              * Kjo është pagesë e simuluar për demo (pa Stripe).
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
