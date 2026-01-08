@@ -388,3 +388,26 @@ body.dark-theme .pz-modal{
   right: 12px;
   z-index: 10;
 }
+
+@media (max-width: 768px) {
+  h1 { font-size: 1.5rem; }
+  h2 { font-size: 1.3rem; }
+
+  .card {
+    margin-bottom: 1rem;
+  }
+
+  .navbar-brand {
+    font-size: 1.1rem;
+  }
+}
+
+.navbar {
+  z-index: 1050;
+  position: relative;
+}
+
+body {
+  overflow-x: hidden;
+  overflow-y: auto;
+}

@@ -54,6 +54,7 @@ function App() {
     confirmNewPassword: '',
   })
 
+
   // ADMIN DASHBOARD
   const [adminStats, setAdminStats] = useState(null)
   const [adminReservations, setAdminReservations] = useState([])
@@ -320,7 +321,7 @@ async function deleteAccount() {
   // -------- ZONES --------
   async function loadZones(token = authToken) {
     try {
-      // backend kthen { start, end, zones: [...] }
+      
       const data = await apiRequest('/zones', { method: 'GET', token })
       setZones(Array.isArray(data) ? data : data.zones || [])
     } catch (err) {
@@ -582,7 +583,7 @@ async function simulatePay() {
             />
             ParkZone
           </a>
-          <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+          <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
             <span className="navbar-toggler-icon"></span>
           </button>
           <div className="collapse navbar-collapse" id="mainNav">
@@ -1292,7 +1293,7 @@ async function simulatePay() {
       {/* PROFILE */}
       {activeSection === 'profile' && (
         <div className="row justify-content-center">
-          <div className="col-lg-6 col-md-8">
+          <div className="col-12 col-md-8 col-lg-6">
               <div className="row g-4">
                 <div className="col-md-6">
                   <div className="card h-100">
