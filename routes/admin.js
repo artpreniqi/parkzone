@@ -6,9 +6,7 @@ const { Op } = require('sequelize');
 
 const router = express.Router();
 
-/**
- * DASHBOARD STATS
- */
+/* DASHBOARD STATS */
 router.get('/stats', auth, requireRole('ADMIN'), async (req, res) => {
   try {
     const now = new Date();
@@ -45,9 +43,7 @@ router.get('/stats', auth, requireRole('ADMIN'), async (req, res) => {
   }
 });
 
-/**
- * LATEST RESERVATIONS
- */
+/* LATEST RESERVATIONS */
 router.get('/reservations', auth, requireRole('ADMIN'), async (req, res) => {
   const limit = Number(req.query.limit) || 10;
 

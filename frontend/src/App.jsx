@@ -96,6 +96,13 @@ function App() {
     color: '',
   })
 
+  const closeMobileMenu = () => {
+    const nav = document.getElementById('mainNav')
+    if (nav && nav.classList.contains('show')) {
+      nav.classList.remove('show')
+    }
+  }
+
   // data lists
   const [zones, setZones] = useState([]) // tani zones do ketë free_spots nga backend
   const [vehicles, setVehicles] = useState([])
@@ -153,6 +160,7 @@ function App() {
     try {
       const user = await apiRequest('/users/me', { method: 'GET', token })
       setCurrentUser({
+        name: user.name,
         email: user.email,
         role: user.Role?.name || 'UNKNOWN',
       })
@@ -195,7 +203,7 @@ async function updateProfile() {
       body: { name, email },
     })
 
-    // update label n’navbar
+    // update label ne navbar
     await fetchMe(authToken)
     showMessage(res.message || 'Profili u përditësua', 'success')
   } catch (err) {
@@ -264,7 +272,7 @@ async function deleteAccount() {
 }
 
 
-  // -------- AUTH --------
+  //  AUTH
   async function handleRegister() {
     try {
       const { name, email, password, roleName } = regForm
@@ -318,7 +326,7 @@ async function deleteAccount() {
     setActiveSection('auth')
   }
 
-  // -------- ZONES --------
+  //  ZONES 
   async function loadZones(token = authToken) {
     try {
       
@@ -352,7 +360,7 @@ async function deleteAccount() {
     }
   }
 
-  // -------- VEHICLES --------
+  //  VEHICLES 
   async function loadVehicles() {
     if (!authToken) {
       showMessage('Duhet të jesh i kyçur', 'warning')
@@ -407,7 +415,7 @@ async function deleteAccount() {
   }
 }
 
-  // -------- RESERVATIONS --------
+  //  RESERVATIONS
   async function createReservation() {
     if (!authToken) {
       showMessage('Duhet të jesh i kyçur', 'warning')
@@ -514,7 +522,7 @@ async function simulatePay() {
   const userLabel = currentUser ? (
     <>
       <i className="bi bi-circle-fill text-success me-1"></i>
-      {currentUser.email}
+      {currentUser.name}
       <span className="badge-role ms-2">{currentUser.role}</span>
     </>
   ) : (
@@ -603,6 +611,7 @@ async function simulatePay() {
                     setActiveSection('zones')
                     loadZones()
                     loadVehicles()
+                    closeMobileMenu()
                   }}
                 >
                   <i className="bi bi-geo-alt-fill me-1"></i> Zones
@@ -614,6 +623,7 @@ async function simulatePay() {
                   onClick={() => {
                     setActiveSection('vehicles')
                     loadVehicles()
+                    closeMobileMenu()
                   }}
                 >
                   <i className="bi bi-car-front-fill me-1"></i> Vehicles
@@ -625,6 +635,7 @@ async function simulatePay() {
                   onClick={() => {
                     setActiveSection('reservations')
                     loadMyReservations()
+                    closeMobileMenu()
                   }}
                 >
                   <i className="bi bi-calendar-check me-1"></i> Reservations
@@ -640,6 +651,7 @@ async function simulatePay() {
                     onClick={() => {
                       setActiveSection('profile')
                       loadProfile()
+                      closeMobileMenu()
                     }}
                   >
                     <i className="bi bi-person-gear me-1"></i> Profile
@@ -656,6 +668,7 @@ async function simulatePay() {
                     onClick={() => {
                       setActiveSection('admin')
                       loadAdminDashboard()
+                      closeMobileMenu()
                     }}
                   >
                     <i className="bi bi-speedometer2 me-1"></i>
@@ -687,7 +700,10 @@ async function simulatePay() {
                   <i className="bi bi-box-arrow-right me-1"></i> Logout
                 </button>
               ) : (
-                <button className="btn btn-outline-light btn-sm" onClick={() => setActiveSection('auth')}>
+                <button className="btn btn-outline-light btn-sm" onClick={() => {
+                  setActiveSection('auth')
+                  closeMobileMenu()
+                }}>
                   <i className="bi bi-box-arrow-in-right me-1"></i> Kyçu
                 </button>
               )}

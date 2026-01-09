@@ -1,6 +1,4 @@
-/* ============================
-   GENERAL LAYOUT & TYPOGRAPHY
-   ============================ */
+/* GENERAL LAYOUT & TYPOGRAPHY */
 
 body {
   background-color: #f5f6f8 !important;
@@ -16,7 +14,6 @@ h1, h2, h3, h4 {
   font-weight: 600 !important;
 }
 
-/* ✅ Mos e detyro me !important për dark mode — e rregullojmë poshtë te dark-theme */
 p, span, label {
   color: #333;
 }
@@ -29,9 +26,7 @@ p, span, label {
   color: #9ca3af !important;
 }
 
-/* ============================
-   NAVBAR
-   ============================ */
+/* NAVBAR */
 
 .navbar {
   background: linear-gradient(90deg, #198754, #16a34a);
@@ -61,9 +56,7 @@ p, span, label {
   padding: 6px 10px;
 }
 
-/* ============================
-   HERO / GLASS SECTION
-   ============================ */
+/* HERO / GLASS SECTION */
 
 .glass {
   padding: 24px 28px;
@@ -81,9 +74,7 @@ p, span, label {
   font-size: 15px;
 }
 
-/* ============================
-   CARDS
-   ============================ */
+/* CARDS */
 
 .card {
   border-radius: 12px !important;
@@ -104,9 +95,7 @@ p, span, label {
   border-bottom: 1px solid #e5e7eb !important;
 }
 
-/* ============================
-   FORM INPUTS
-   ============================ */
+/* FORM INPUTS */
 
 .form-label {
   color: #444 !important;
@@ -125,9 +114,7 @@ p, span, label {
   box-shadow: 0 0 0 0.15rem rgba(22, 163, 74, 0.25) !important;
 }
 
-/* ============================
-   BUTTONS
-   ============================ */
+/* BUTTONS */
 
 .btn-success,
 .btn-primary,
@@ -141,9 +128,7 @@ p, span, label {
   border-radius: 999px !important;
 }
 
-/* ============================
-   API STATUS BADGE
-   ============================ */
+/* API STATUS BADGE */
 
 .api-status {
   padding: 6px 12px;
@@ -157,9 +142,7 @@ p, span, label {
   gap: 6px;
 }
 
-/* ============================
-   SECTIONS (Zones / Vehicles / Reservations)
-   ============================ */
+/* SECTIONS (Zones / Vehicles / Reservations) */
 
 .section-title {
   color: #1f2937 !important;
@@ -168,7 +151,6 @@ p, span, label {
   font-size: 20px;
 }
 
-/* ✅ Mos e detyro tabelën white me !important, se e prish dark mode */
 .table {
   background: #ffffff;
   border-radius: 12px !important;
@@ -185,9 +167,7 @@ p, span, label {
   vertical-align: middle !important;
 }
 
-/* ============================
-   FOOTER
-   ============================ */
+/* FOOTER */
 
 footer {
   margin-top: 30px;
@@ -196,9 +176,7 @@ footer {
   color: #6b7280;
 }
 
-/* ==========================================
-   DARK MODE OVERRIDES (FIX WHITE PARTS)
-   ========================================== */
+/* DARK MODE OVERRIDES (FIX WHITE PARTS) */
 
 body.dark-theme {
   background-color: #020617 !important;
@@ -209,11 +187,11 @@ body.dark-theme {
   background-color: #020617 !important;
   color: #e5e7eb !important;
 
-  /* KJO ËSHTË ÇELËSI 🔑 */
+  /* KEY */
   color-scheme: dark;
 }
 
-/* Tekst i qartë në dark mode (për krejt p/span/label) */
+/* Tekst i qarte ne dark mode (per krejt p/span/label) */
 body.dark-theme p,
 body.dark-theme span,
 body.dark-theme label {
@@ -289,7 +267,7 @@ body.dark-theme .table-hover > tbody > tr:hover > * {
   background-color: rgba(255,255,255,0.08) !important;
 }
 
-/* Nëse Bootstrap po fut bg-light/bg-white diku */
+/* Nese Bootstrap fut bg-light/bg-white diku */
 body.dark-theme .bg-white,
 body.dark-theme .bg-light,
 body.dark-theme .table-light {

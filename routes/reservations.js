@@ -56,7 +56,7 @@ router.post('/', auth, async (req, res) => {
     }
 
     const diffMs = end - start;
-    const hours = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60))); // rrumbullak lart, min 1 orë
+    const hours = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60))); // min 1 orë
     const pricePerHour = Number(zone.price_per_hour || 1.5);
     const totalPrice = Number((hours * pricePerHour).toFixed(2));
 
@@ -180,7 +180,7 @@ router.get('/my', auth, async (req, res) => {
   }
 });
 
-// availability (mundesh me e lan, po s’na duhet më kur e bojmë te /zones)
+// availability 
 router.get('/availability/:zoneId', auth, async (req, res) => {
   const { zoneId } = req.params;
   const { start, end } = req.query;
